@@ -11,11 +11,6 @@ using AWSLauncher.Models;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.Json.JsonSerializer))]
-
-/// <summary>
-/// Starts, stops and termintes instances based on Auto On, Auto Off, Auto Kill tags with the use of Cron format for the value
-/// https://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html
-/// </summary>
 namespace AWSLauncher
 {
     public partial class Function

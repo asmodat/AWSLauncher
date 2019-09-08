@@ -12,10 +12,6 @@ using AWSLauncher.Models.Infrastructure;
 using AWSWrapper.EC2;
 using static AWSWrapper.EC2.EC2Helper;
 
-/// <summary>
-/// Starts, stops and termintes instances based on Auto On, Auto Off, Auto Kill tags with the use of Cron format for the value
-/// https://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html
-/// </summary>
 namespace AWSLauncher
 {
     public partial class Function

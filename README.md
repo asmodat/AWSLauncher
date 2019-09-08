@@ -59,7 +59,7 @@ instances_path: AWS/<region>/EC2/Instances
 ```
 Code entry type -> .zip -> (execute ./publish.sh script to generate)
 Runtime: .NET Core 2.1 (C#/PowerShell)
-Handler: LambdaTest::LambdaTest.LambdaHandler::FunctionHandler
+Handler: AWSLauncher::AWSLauncher.Function::FunctionHandler
 ```
 
 ## Example Deployment File
