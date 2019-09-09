@@ -1,6 +1,6 @@
 # AWSLauncher
 
-Deployment System Based on AWS Lambda
+Deployment System Based on AWS Lambda, latest release can be found [here](https://github.com/asmodat/AWSLauncher/releases).
 
 ## Installing Debug Tools
 
@@ -94,7 +94,7 @@ Handler: AWSLauncher::AWSLauncher.Function::FunctionHandler
 > For testing it is recommended to use NoVPC, while on mainnet propper configuration of VPC, subnets, routes, gateway & nat along endpoints is required
 > Following resources might be helpfull when dealing with the issues.
 
-````
+```
 https://forums.aws.amazon.com/thread.jspa?threadID=279633
 https://gist.github.com/reggi/dc5f2620b7b4f515e68e46255ac042a7
 https://docs.aws.amazon.com/vpc/latest/userguide/vpc-dns.html
