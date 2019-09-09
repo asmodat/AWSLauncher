@@ -9,7 +9,7 @@ namespace GITWrapper.GitHub.Models
         public string user { get; set; }
         public string branch { get; set; }
         public string repository { get; set; }
-        public string userAgent { get; set; } = "Asmodat Deployment Toolkit";
+        public string userAgent { get; set; } = "Asmodat Launcher Toolkit";
         public string accessToken { get; set; }
     }
 }

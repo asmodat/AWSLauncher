@@ -1,4 +1,5 @@
-﻿using AsmodatStandard.Extensions;
+﻿using Amazon.Lambda.Core;
+using AsmodatStandard.Extensions;
 using AsmodatStandard.Extensions.Collections;
 using GITWrapper.GitHub.Models;
 using System;
@@ -13,8 +14,7 @@ namespace GITWrapper.GitHub
         public Task<GitHubTree> GetGitHubTrees(GitHubObject go) => GetGitHubTrees(go?.url);
         public async Task<GitHubTree> GetGitHubTrees(string request = null)
         {
-
-            var accessToken = _config.accessToken.IsNullOrWhitespace() ? "" : $"?access_token={_config.accessToken}";
+            var accessToken = (_config?.accessToken).IsNullOrWhitespace() ? "" : $"?access_token={_config?.accessToken}";
             request = request.IsNullOrEmpty() ? $"https://api.github.com/repos/{_config.user}/{_config.repository}/git/trees/{_config.branch}{accessToken}" :
                                                 $"{request}{accessToken}";
 
@@ -25,7 +25,7 @@ namespace GITWrapper.GitHub
                                         ("User-Agent", _config.userAgent)
                                     });
 
-            if(!(root?.tree).IsNullOrEmpty())
+            if (!(root?.tree).IsNullOrEmpty())
                 foreach(var o in root.tree)
                     if(o.IsTree())
                         o.tree = await this.GetGitHubTrees(o);

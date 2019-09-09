@@ -21,7 +21,10 @@ namespace AWSLauncher
             if (cfg?.enabled != true)
                 throw new Exception($"Config {cfg?.name ?? "undefined"} is disabled and will not be processed.");
 
-            var instance = await _EC2.GetInstanceByName(cfg.name, throwIfNotFound: false);
+            if ((cfg?.name?.Trim()).IsNullOrEmpty())
+                throw new Exception($"Can't process config, name property was not defined.");
+
+            var instance = instances?.FirstOrDefault(x => x?.Tags?.Any(y => y?.Key?.ToLower() == "name" && y?.Value?.ToLower()?.Trim() == cfg.name.ToLower().Trim()) == true);
             var tags = instance?.Tags?.ToDictionary(x => x.Key, y => y.Value) ?? new Dictionary<string, string>();
             var isRunning = (instance?.State.Code ?? -1) == (int)InstanceStateCode.running;
             var isStopped = (instance?.State.Code ?? -1) == (int)InstanceStateCode.stopped;
@@ -39,8 +42,9 @@ namespace AWSLauncher
             {
                 if (kill != 0 && !cfg.terminate && !cfg.terminate)
                 {
+                    Log($"{cfg?.name ?? "undefined"} => CREATING New Instance.");
                     instance = await CreateInstance(cfg);
-                    _logger.Log($"{cfg?.name ?? "undefined"} => RESULT: New Instance {instance?.InstanceId} was created.");
+                    Log($"{cfg?.name ?? "undefined"} => RESULT: New Instance {instance?.InstanceId} was created.");
                 }
                 return;
             }
@@ -61,33 +65,34 @@ namespace AWSLauncher
 
             if (isRunning && (off == 0 || kill == 0))
             {
-                _logger.Log($"{cfg?.name ?? "undefined"} => STOPING Instance {instance.InstanceId} ({instance.GetTagValueOrDefault("Name")}), Cron: {cfg.off ?? "undefined"}");
+                Log($"{cfg?.name ?? "undefined"} => STOPING Instance {instance.InstanceId} ({instance.GetTagValueOrDefault("Name")}), Cron: {cfg.off ?? "undefined"}");
                 var result = await _EC2.StopInstance(instanceId: instance.InstanceId, force: false);
-                _logger.Log($"{cfg?.name ?? "undefined"} => RESULT: Instance {instance.InstanceId} ({instance.GetTagValueOrDefault("Name")}), StateChange: {result.JsonSerialize(Newtonsoft.Json.Formatting.Indented)}");
+                Log($"{cfg?.name ?? "undefined"} => RESULT: Instance {instance.InstanceId} ({instance.GetTagValueOrDefault("Name")}), StateChange: {result.JsonSerialize(Newtonsoft.Json.Formatting.Indented)}");
                 return;
             }
             else if (isStopped && (on == 0 && kill != 0))
             {
-                _logger.Log($"{cfg?.name ?? "undefined"} => STARTING Instance {instance.InstanceId}, Cron: {cfg.on ?? "undefined"}");
+                Log($"{cfg?.name ?? "undefined"} => STARTING Instance {instance.InstanceId}, Cron: {cfg.on ?? "undefined"}");
                 var result = await _EC2.StartInstance(instanceId: instance.InstanceId, additionalInfo: $"AWSLauncher Auto On, Cron: {cfg.on}");
-                _logger.Log($"{cfg?.name ?? "undefined"} => RESULT: Instance {instance.InstanceId}, StateChange: {result.JsonSerialize(Newtonsoft.Json.Formatting.Indented)}");
+                Log($"{cfg?.name ?? "undefined"} => RESULT: Instance {instance.InstanceId}, StateChange: {result.JsonSerialize(Newtonsoft.Json.Formatting.Indented)}");
                 return;
             }
             else if (isStopped && kill == 0)
             {
                 
-                _logger.Log($"{cfg?.name ?? "undefined"} => TERMINATING Instance {instance.InstanceId} and removing Tag's, Cron: {cfg.off ?? "undefined"}");
+                Log($"{cfg?.name ?? "undefined"} => TERMINATING Instance {instance.InstanceId} and removing Tag's, Cron: {cfg.off ?? "undefined"}");
                 var wiper = await _EC2.DeleteAllInstanceTags(instanceId: instance.InstanceId);
                 var result = await _EC2.TerminateInstance(instanceId: instance.InstanceId);
-                _logger.Log($"{cfg?.name ?? "undefined"} => Instance {instance.InstanceId}, StateChange: {result.JsonSerialize(Newtonsoft.Json.Formatting.Indented)}");
+                Log($"{cfg?.name ?? "undefined"} => Instance {instance.InstanceId}, StateChange: {result.JsonSerialize(Newtonsoft.Json.Formatting.Indented)}");
                 return;
             }
 
             var tagsChanged = !cfg.GetTags().CollectionEquals(tags);
             if(tagsChanged && isStateDefined)
             {
+                Log($"{cfg?.name ?? "undefined"} =>  UPDATING Instance Tags.");
                 var tagUpdate = await UpdateTagsAsync(_EC2,instance.InstanceId, cfg.GetTags());
-                _logger.Log($"{cfg?.name ?? "undefined"} =>  Instance Tags were {(tagUpdate ? "" : "NOT")} updated.");
+                Log($"{cfg?.name ?? "undefined"} =>  Instance Tags were {(tagUpdate ? "" : "NOT")} updated.");
             }
         }
 

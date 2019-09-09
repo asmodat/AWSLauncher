@@ -9,13 +9,15 @@ using AsmodatStandard.Extensions.Collections;
 using AsmodatStandard.Extensions.Threading;
 using AWSLauncher.Models.Infrastructure;
 using GITWrapper.GitHub.Models;
+using AsmodatStandard.Networking;
 
 namespace AWSLauncher
 {
     public partial class Function
     {
-        public async Task Processing(Instance[] instances, ILambdaLogger logger)
+        public async Task Processing(Instance[] instances)
         {
+            Log($"Loading github configuration files...");
             var files = await _GIT.GetGitHubTrees();
             var instancesPath = Environment.GetEnvironmentVariable("instances_path");
             var instanceObjects = files.GetObjectsByPath(path: instancesPath)?.Where(x => x.IsTree());
@@ -27,7 +29,7 @@ namespace AWSLauncher
 
                 if (configObject?.IsBlob() != true)
                 {
-                    _logger.LogLine($"Failed to load config file from {instancesPath}/{instanceObject?.path ?? "undefined"}");
+                    Log($"Failed to load config file from {instancesPath}/{instanceObject?.path ?? "undefined"}");
                     continue;
                 }
 
@@ -38,6 +40,7 @@ namespace AWSLauncher
 
             var parallelism = Environment.GetEnvironmentVariable("parallelism").ToIntOrDefault(1);
 
+            Log($"Found {configs.Count} configuration files.");
             if (!configs.IsNullOrEmpty())
                 await ParallelEx.ForEachAsync(configs, async cfg =>
                 {
@@ -46,6 +49,7 @@ namespace AWSLauncher
                     /*/// PRODUCTION
                     try
                     {
+                        Log($"Processing '{cfg?.name ?? "undefined"} config'...");
                         await Launcher(instances, cfg);
                     }
                     catch (Exception ex)
@@ -54,6 +58,7 @@ namespace AWSLauncher
                     }
                     //*/
                 }, maxDegreeOfParallelism: parallelism);
+            Log($"Done, all configuration files were processed.");
         }
     }
 }
