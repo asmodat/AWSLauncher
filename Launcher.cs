@@ -10,6 +10,7 @@ using AsmodatStandard.Extensions.Collections;
 using AsmodatStandard.Types;
 using AWSLauncher.Models.Infrastructure;
 using AWSWrapper.EC2;
+using AWSWrapper.Extensions;
 using static AWSWrapper.EC2.EC2Helper;
 
 namespace AWSLauncher
@@ -21,10 +22,18 @@ namespace AWSLauncher
             if (cfg?.enabled != true)
                 throw new Exception($"Config {cfg?.name ?? "undefined"} is disabled and will not be processed.");
 
-            if ((cfg?.name?.Trim()).IsNullOrEmpty())
-                throw new Exception($"Can't process config, name property was not defined.");
+            var targetName = cfg?.name?.Trim()?.ToLower();
+            if (targetName.IsNullOrEmpty())
+                throw new Exception($"Can't process config, name property was not defined in the configuration file.");
 
-            var instance = instances?.FirstOrDefault(x => x?.Tags?.Any(y => y?.Key?.ToLower() == "name" && y?.Value?.ToLower()?.Trim() == cfg.name.ToLower().Trim()) == true);
+            var namedInstances = instances?
+                .Where(x => x?.Tags?.Any(y => y?.Key?.ToLower() == "name" && y?.Value?.ToLower()?.Trim() == targetName) == true);
+
+            if(namedInstances?.Count() != 1)
+                throw new Exception($"WARNING! More then one instance with name '{targetName}' were found, config will not be processed.");
+
+            var instance = namedInstances?.FirstOrDefault();
+
             var tags = instance?.Tags?.ToDictionary(x => x.Key, y => y.Value) ?? new Dictionary<string, string>();
             var isRunning = (instance?.State.Code ?? -1) == (int)InstanceStateCode.running;
             var isStopped = (instance?.State.Code ?? -1) == (int)InstanceStateCode.stopped;
@@ -37,10 +46,14 @@ namespace AWSLauncher
             if (off == 0 && on == 0)
                 throw new Exception($"CRON On ({cfg?.on ?? "undefined"}) and Off ({cfg?.off ?? "undefined"}) of the {cfg?.name ?? "undefined"} instance are in invalid state, both are enabled, if possible set the cron not to overlap.");
 
+            if(!isStateDefined)
+                throw new Exception($"Instance state is undefined and can't be processed.");
 
-            if (instance == null || isTerminated)
+            if (instance == null || isTerminated) //if instance was not found or is terminated
             {
-                if (kill != 0 && !cfg.terminate && !cfg.terminate)
+                if ((on == 0 || off == 0) && //if is on or off
+                    kill != 0 && //and not killed
+                    !cfg.terminate) //and should not be terminated, then create
                 {
                     Log($"{cfg?.name ?? "undefined"} => CREATING New Instance.");
                     instance = await CreateInstance(cfg);
@@ -87,8 +100,7 @@ namespace AWSLauncher
                 return;
             }
 
-            var tagsChanged = !cfg.GetTags().CollectionEquals(tags);
-            if(tagsChanged && isStateDefined)
+            if(!cfg.GetTags().CollectionEquals(tags)) //if tags changed
             {
                 Log($"{cfg?.name ?? "undefined"} =>  UPDATING Instance Tags.");
                 var tagUpdate = await UpdateTagsAsync(_EC2,instance.InstanceId, cfg.GetTags());
@@ -130,8 +142,10 @@ namespace AWSLauncher
                 associatePublicIpAddress: cfg.publicIp,
                 tags: cfg.GetTags(), 
                 ebsOptymalized: cfg.ebsOptymalized,
+                rootDeviceName: cfg.rootDeviceName,
                 rootVolumeType: cfg.rootVolumeType,
                 rootVolumeSize: cfg.rootVolumeSize,
+                rootSnapshotId: cfg.rootSnapshotId,
                 rootIOPS: cfg.rootIOPS);
 
             return result.Reservation.Instances.FirstOrDefault();

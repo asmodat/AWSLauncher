@@ -7,8 +7,9 @@ using Amazon.Lambda.Core;
 using AWSWrapper.EC2;
 using AWSWrapper.ELB;
 using GITWrapper.GitHub;
-using AWSLauncher.Models;
+
 using AsmodatStandard.Networking;
+using AWSWrapper.SM;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.Json.JsonSerializer))]
@@ -49,7 +50,6 @@ namespace AWSLauncher
             _verbose = Environment.GetEnvironmentVariable("verbose").ToBoolOrDefault(true);
             var githubToken = Environment.GetEnvironmentVariable("github_token");
 
-
             if (githubToken.IsNullOrEmpty())
                 throw new Exception("Environment Variable 'github-token' was not defined!");
 
@@ -58,7 +58,7 @@ namespace AWSLauncher
 
             string accessToken;
 
-            if(githubToken.IsHex())
+            if (githubToken.IsHex())
             {
                 Log($"Property 'githubToken' was determined to be a hexadecimal and will be used as accessToken");
                 accessToken = githubToken;
@@ -69,21 +69,19 @@ namespace AWSLauncher
                 accessToken = (await _SM.GetSecret(githubToken)).JsonDeserialize<AmazonSecretsToken>()?.token;
             }
 
-            _GIT = new GitHubHelper(new GITWrapper.GitHub.Models.GitHubRepoConfig
+            var rateLimit = Environment.GetEnvironmentVariable("github_rate_limit").ToIntOrDefault(1000);
+            _GIT = new GitHubHelper(new GITWrapper.GitHub.Models.GitHubRepoConfig(accessToken: accessToken, maxRatePerHour: rateLimit)
             {
                 user = Environment.GetEnvironmentVariable("github_user"),
                 branch = Environment.GetEnvironmentVariable("github_branch"),
                 repository = Environment.GetEnvironmentVariable("github_repository"),
-                accessToken = accessToken,
                 userAgent = Environment.GetEnvironmentVariable("user_agent") ?? "Asmodat Launcher Toolkit",
             });
 
             try
             {
-                Log($"Loading instance informations....");
-                var instances = await _EC2.ListInstances();
-                Log($"Found {instances?.Length ?? 0} instances. Processing...");
-                await Processing(instances);
+                Log($"Processing...");
+                await Processing();
             }
             finally
             {

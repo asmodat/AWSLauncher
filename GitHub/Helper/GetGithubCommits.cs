@@ -9,12 +9,13 @@ namespace GITWrapper.GitHub
 {
     public partial class GitHubHelper
     {
-        public Task<GitHubRepoCommits> GetGitHubCommits()
+        public async Task<GitHubRepoCommits> GetGitHubCommits()
         {
-            var accessToken = _config.accessToken.IsNullOrWhitespace() ? "" : $"?access_token={_config.accessToken}";
+            var at = await _config.GetAccessToken();
+            var accessToken = at.IsNullOrWhitespace() ? "" : $"?access_token={at}";
             var request = $"https://api.github.com/repos/{_config.user}/{_config.repository}/commits/{_config.branch}{accessToken}";
 
-            return HttpHelper.GET<GitHubRepoCommits>(
+            return await HttpHelper.GET<GitHubRepoCommits>(
                                     requestUri: request,
                                     ensureStatusCode: System.Net.HttpStatusCode.OK,
                                     defaultHeaders: new (string, string)[] {

@@ -6,12 +6,13 @@ namespace GITWrapper.GitHub
 {
     public partial class GitHubHelper
     {
-        public Task<GitHubBlob> GetGitHubBlob(GitHubObject obj)
+        public async Task<GitHubBlob> GetGitHubBlob(GitHubObject obj)
         {
-            var accessToken = _config.accessToken.IsNullOrWhitespace() ? "" : $"?access_token={_config.accessToken}";
+            var at = await _config.GetAccessToken();
+            var accessToken = at.IsNullOrWhitespace() ? "" : $"?access_token={at}";
             var request = $"{obj.url}{accessToken}";
 
-            return HttpHelper.GET<GitHubBlob>(
+            return await HttpHelper.GET<GitHubBlob>(
                                     requestUri: request,
                                     ensureStatusCode: System.Net.HttpStatusCode.OK,
                                     defaultHeaders: new (string, string)[] {

@@ -10,12 +10,40 @@ using AsmodatStandard.Extensions.Threading;
 using AWSLauncher.Models.Infrastructure;
 using GITWrapper.GitHub.Models;
 using AsmodatStandard.Networking;
+using AWSWrapper.Extensions;
+using AWSLauncher.Models;
+using AWSWrapper.EC2;
 
 namespace AWSLauncher
 {
     public partial class Function
     {
-        public async Task Processing(Instance[] instances)
+        public async Task<Instance[]> TagsClenup(Instance[] instances)
+        {
+            if (instances.IsNullOrEmpty())
+                return new Instance[0];
+
+            var inactives = instances?.Where(x => x.HasTags() && x.IsTerminating());
+
+            var clean = new List<Instance>();
+            foreach(var i in instances)
+            {
+                if (!i.HasTags())
+                    continue;
+
+                if (i.IsTerminating()) //if has tags and is terminating or terminated
+                {
+                    Log($"Removing Tags from the instance {i.InstanceId}...");
+                    var deleteTags = await _EC2.DeleteAllInstanceTags(i.InstanceId);
+                }
+                else //is clean
+                    clean.Add(i);
+            }
+
+            return clean.ToArray();
+        }
+
+        public async Task Processing()
         {
             Log($"Loading github configuration files...");
             var files = await _GIT.GetGitHubTrees();
@@ -40,7 +68,12 @@ namespace AWSLauncher
 
             var parallelism = Environment.GetEnvironmentVariable("parallelism").ToIntOrDefault(1);
 
-            Log($"Found {configs.Count} configuration files.");
+
+            Log($"Loading instances...");
+            var instances = await _EC2.ListInstances();
+            instances = await TagsClenup(instances);
+
+            Log($"Found {configs.Count} configuration files and {instances?.Count() ?? 0} active instances.");
             if (!configs.IsNullOrEmpty())
                 await ParallelEx.ForEachAsync(configs, async cfg =>
                 {

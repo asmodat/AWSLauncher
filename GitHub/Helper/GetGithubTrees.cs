@@ -14,7 +14,8 @@ namespace GITWrapper.GitHub
         public Task<GitHubTree> GetGitHubTrees(GitHubObject go) => GetGitHubTrees(go?.url);
         public async Task<GitHubTree> GetGitHubTrees(string request = null)
         {
-            var accessToken = (_config?.accessToken).IsNullOrWhitespace() ? "" : $"?access_token={_config?.accessToken}";
+            var at = await _config.GetAccessToken();
+            var accessToken = at.IsNullOrWhitespace() ? "" : $"?access_token={at}";
             request = request.IsNullOrEmpty() ? $"https://api.github.com/repos/{_config.user}/{_config.repository}/git/trees/{_config.branch}{accessToken}" :
                                                 $"{request}{accessToken}";
 
